@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Main CloudFormation stack for Basic Cloud App'
+
+Parameters:
+  Environment:
+    Description: Environment name
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+
+  ProjectName:
+    Description: Name of the project
+    Type: String
+    Default: BasicCloudApp
+
+  VpcCidr:
+    Description: CIDR block for the VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1Cidr:
+    Description: CIDR block for public subnet in AZ 1
+    Type: String
+    Default: 10.0.1.0/24
+
+  PublicSubnet2Cidr:
+    Description: CIDR block for public subnet in AZ 2
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1Cidr:
+    Description: CIDR block for private subnet in AZ 1
+    Type: String
+    Default: 10.0.3.0/24
+
+  PrivateSubnet2Cidr:
+    Description: CIDR block for private subnet in AZ 2
+    Type: String
+    Default: 10.0.4.0/24
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair
+    Type: String
+
+  DBInstanceClass:
+    Description: Database instance class
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+
+  DBName:
+    Description: Database name
+    Type: String
+    Default: cloudappdb
+
+  DBUsername:
+    Description: Database admin username
+    Type: String
+    Default: dbadmin
+
+  DBPassword:
+    Description: Database admin password
+    Type: String
+    NoEcho: true
+
+  CacheNodeType:
+    Description: ElastiCache node type
+    Type: String
+    Default: cache.t2.micro
+    AllowedValues:
+      - cache.t2.micro
+      - cache.t3.micro
+
+  EnableNatGateway:
+    Description: Enable NAT Gateway for private subnets
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+Resources:
+  # Network Stack
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/BUCKET_NAME/templates/network.yml
+      Parameters:
+        Environment: !Ref Environment
+        ProjectName: !Ref ProjectName
+        VpcCidr: !Ref VpcCidr
+        PublicSubnet1Cidr: !Ref PublicSubnet1Cidr
+        PublicSubnet2Cidr: !Ref PublicSubnet2Cidr
+        PrivateSubnet1Cidr: !Ref PrivateSubnet1Cidr
+        PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
+        EnableNatGateway: !Ref EnableNatGateway
+      TimeoutInMinutes: 20
+
+  # Security Groups Stack
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/BUCKET_NAME/templates/security.yml
+      Parameters:
+        Environment: !Ref Environment
+        ProjectName: !Ref ProjectName
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+      TimeoutInMinutes: 10
+
+  # Storage Stack
+  StorageStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/BUCKET_NAME/templates/storage.yml
+      Parameters:
+        Environment: !Ref Environment
+        ProjectName: !Ref ProjectName
+      TimeoutInMinutes: 10
+
+  # Database Stack
+  DatabaseStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - NetworkStack
+      - SecurityStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/BUCKET_NAME/templates/database.yml
+      Parameters:
+        Environment: !Ref Environment
+        ProjectName: !Ref ProjectName
+        DBName: !Ref DBName
+        DBUsername: !Ref DBUsername
+        DBPassword: !Ref DBPassword
+        DBInstanceClass: !Ref DBInstanceClass
+        PrivateSubnet1: !GetAtt NetworkStack.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt NetworkStack.Outputs.PrivateSubnet2
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        DatabaseSecurityGroupId: !GetAtt SecurityStack.Outputs.DatabaseSecurityGroupId
+        CacheSecurityGroupId: !GetAtt SecurityStack.Outputs.CacheSecurityGroupId
+        CacheNodeType: !Ref CacheNodeType
+      TimeoutInMinutes: 30
+
+  # Compute Stack
+  ComputeStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - NetworkStack
+      - SecurityStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/BUCKET_NAME/templates/compute.yml
+      Parameters:
+        Environment: !Ref Environment
+        ProjectName: !Ref ProjectName
+        InstanceType: !Ref InstanceType
+        KeyPairName: !Ref KeyPairName
+        PublicSubnet1: !GetAtt NetworkStack.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt NetworkStack.Outputs.PublicSubnet2
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        WebServerSecurityGroupId: !GetAtt SecurityStack.Outputs.WebServerSecurityGroupId
+        ALBSecurityGroupId: !GetAtt SecurityStack.Outputs.ALBSecurityGroupId
+      TimeoutInMinutes: 20
+
+Outputs:
+  WebsiteURL:
+    Description: URL of the website
+    Value: !Sub http://${ComputeStack.Outputs.ALBDNSName}
+
+  DBEndpoint:
+    Description: The connection endpoint for the PostgreSQL database
+    Value: !GetAtt DatabaseStack.Outputs.DatabaseEndpoint
+
+  RedisEndpoint:
+    Description: The connection endpoint for the Redis cluster
+    Value: !GetAtt DatabaseStack.Outputs.RedisEndpoint
+
+  S3BucketName:
+    Description: Name of the S3 bucket
+    Value: !GetAtt StorageStack.Outputs.BucketName

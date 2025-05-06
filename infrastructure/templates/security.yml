@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Security groups for Basic Cloud App'
+
+Parameters:
+  Environment:
+    Description: Environment name
+    Type: String
+    Default: dev
+
+  ProjectName:
+    Description: Name of the project
+    Type: String
+    Default: BasicCloudApp
+
+  VpcId:
+    Description: ID of the VPC
+    Type: String
+
+Resources:
+  # ALB Security Group
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Application Load Balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTP access from anywhere
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS access from anywhere
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-alb-sg
+
+  # Web Server Security Group
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for web servers
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: Allow HTTP from ALB
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow SSH access for administration (restrict in production)
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-web-sg
+
+  # Database Security Group
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS database
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
+          Description: Allow PostgreSQL access from web servers
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-db-sg
+
+  # ElastiCache Security Group
+  CacheSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ElastiCache
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
+          Description: Allow Redis access from web servers
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-cache-sg
+
+Outputs:
+  ALBSecurityGroupId:
+    Description: The ID of the ALB security group
+    Value: !GetAtt ALBSecurityGroup.GroupId
+    Export:
+      Name: !Sub ${AWS::StackName}-ALBSecurityGroupId
+
+  WebServerSecurityGroupId:
+    Description: The ID of the web server security group
+    Value: !GetAtt WebServerSecurityGroup.GroupId
+    Export:
+      Name: !Sub ${AWS::StackName}-WebServerSecurityGroupId
+
+  DatabaseSecurityGroupId:
+    Description: The ID of the database security group
+    Value: !GetAtt DatabaseSecurityGroup.GroupId
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseSecurityGroupId
+
+  CacheSecurityGroupId:
+    Description: The ID of the cache security group
+    Value: !GetAtt CacheSecurityGroup.GroupId
+    Export:
+      Name: !Sub ${AWS::StackName}-CacheSecurityGroupId

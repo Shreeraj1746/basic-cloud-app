@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Database resources for Basic Cloud App'
+
+Parameters:
+  Environment:
+    Description: Environment name
+    Type: String
+    Default: dev
+
+  ProjectName:
+    Description: Name of the project
+    Type: String
+    Default: BasicCloudApp
+
+  DBName:
+    Description: Database name
+    Type: String
+    Default: cloudappdb
+
+  DBUsername:
+    Description: Database admin username
+    Type: String
+    Default: dbadmin
+
+  DBPassword:
+    Description: Database admin password
+    Type: String
+    NoEcho: true
+
+  DBInstanceClass:
+    Description: Database instance class
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+
+  PrivateSubnet1:
+    Description: ID of private subnet 1
+    Type: String
+
+  PrivateSubnet2:
+    Description: ID of private subnet 2
+    Type: String
+
+  VpcId:
+    Description: ID of the VPC
+    Type: String
+
+  DatabaseSecurityGroupId:
+    Description: ID of the database security group
+    Type: String
+
+  CacheSecurityGroupId:
+    Description: ID of the cache security group
+    Type: String
+
+  CacheNodeType:
+    Description: ElastiCache node type
+    Type: String
+    Default: cache.t2.micro
+    AllowedValues:
+      - cache.t2.micro
+      - cache.t3.micro
+
+Resources:
+  # RDS Subnet Group
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS instances
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-db-subnet-group
+
+  # PostgreSQL RDS Instance
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      EngineVersion: '13.7'
+      DBInstanceIdentifier: !Sub ${ProjectName}-${Environment}-db
+      AllocatedStorage: 20
+      DBInstanceClass: !Ref DBInstanceClass
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroupId
+      MultiAZ: false
+      StorageType: gp2
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      DeletionProtection: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-postgres
+
+  # ElastiCache Subnet Group
+  CacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for ElastiCache clusters
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-cache-subnet-group
+
+  # Redis ElastiCache Cluster
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      Engine: redis
+      EngineVersion: 6.2
+      CacheNodeType: !Ref CacheNodeType
+      NumCacheNodes: 1
+      ClusterName: !Sub ${ProjectName}-${Environment}-redis
+      CacheSubnetGroupName: !Ref CacheSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref CacheSecurityGroupId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-redis
+
+Outputs:
+  DatabaseEndpoint:
+    Description: The connection endpoint for the PostgreSQL database
+    Value: !GetAtt PostgresDB.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-DBEndpoint
+
+  DatabasePort:
+    Description: The port for the PostgreSQL database
+    Value: !GetAtt PostgresDB.Endpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-DBPort
+
+  RedisEndpoint:
+    Description: The connection endpoint for the Redis cluster
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-RedisEndpoint
+
+  RedisPort:
+    Description: The port for the Redis cluster
+    Value: !GetAtt RedisCluster.RedisEndpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-RedisPort

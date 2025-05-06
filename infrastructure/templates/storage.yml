@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Storage resources for Basic Cloud App'
+
+Parameters:
+  Environment:
+    Description: Environment name
+    Type: String
+    Default: dev
+
+  ProjectName:
+    Description: Name of the project
+    Type: String
+    Default: BasicCloudApp
+
+Resources:
+  # S3 Bucket with versioning
+  AppBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub ${ProjectName}-${Environment}-bucket-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-bucket
+
+  # S3 Bucket Policy to secure access
+  AppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AppBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'DenyUnEncryptedObjectUploads'
+            Effect: 'Deny'
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource: !Sub '${AppBucket.Arn}/*'
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': 'AES256'
+          - Sid: 'DenyInsecureConnections'
+            Effect: 'Deny'
+            Principal: '*'
+            Action: 's3:*'
+            Resource: !Sub '${AppBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+Outputs:
+  BucketName:
+    Description: The name of the S3 bucket
+    Value: !Ref AppBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-BucketName
+
+  BucketArn:
+    Description: The ARN of the S3 bucket
+    Value: !GetAtt AppBucket.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-BucketArn
