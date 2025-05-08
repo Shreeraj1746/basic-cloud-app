@@ -46,7 +46,7 @@ echo -e "${GREEN}Templates uploaded successfully${NC}"
 # Deploy the CloudFormation stack
 echo -e "${YELLOW}Deploying CloudFormation stack ${STACK_NAME}...${NC}"
 aws cloudformation deploy \
-    --template-file "https://basic-cloud-app-templates-584102815769.s3.ap-south-1.amazonaws.com/templates/main.yml" \
+    --template-url "https://basic-cloud-app-templates-584102815769.s3.ap-south-1.amazonaws.com/templates/main.yml" \
     --stack-name "${STACK_NAME}" \
     --parameter-overrides file://${PARAMS_FILE} \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
