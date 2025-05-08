@@ -10,7 +10,7 @@ Parameters:
   ProjectName:
     Description: Name of the project
     Type: String
-    Default: BasicCloudApp
+    Default: basic-cloud-app
 
   DBName:
     Description: Database name
@@ -83,7 +83,7 @@ Resources:
     UpdateReplacePolicy: Snapshot
     Properties:
       Engine: postgres
-      EngineVersion: '13.7'
+      EngineVersion: '17.2'
       DBInstanceIdentifier: !Sub ${ProjectName}-${Environment}-db
       AllocatedStorage: 20
       DBInstanceClass: !Ref DBInstanceClass

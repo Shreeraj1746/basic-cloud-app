@@ -4,6 +4,56 @@ This project demonstrates how to deploy a simple Python application on AWS using
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph "AWS Cloud"
+        subgraph "VPC"
+            subgraph "Public Subnets"
+                ALB[Application Load Balancer]
+            end
+
+            subgraph "Private Subnets"
+                subgraph "Auto Scaling Group"
+                    EC2_1[EC2 Instance 1]
+                    EC2_2[EC2 Instance 2]
+                end
+
+                subgraph "Database Layer"
+                    RDS[(RDS PostgreSQL)]
+                    Redis[(ElastiCache Redis)]
+                end
+            end
+
+            subgraph "Storage"
+                S3[(S3 Bucket)]
+            end
+
+            IGW[Internet Gateway]
+            NAT[NAT Gateway]
+        end
+    end
+
+    Internet((Internet)) --> IGW
+    IGW --> ALB
+    ALB --> EC2_1
+    ALB --> EC2_2
+    EC2_1 --> RDS
+    EC2_2 --> RDS
+    EC2_1 --> Redis
+    EC2_2 --> Redis
+    EC2_1 --> S3
+    EC2_2 --> S3
+    NAT --> Internet
+    EC2_1 --> NAT
+    EC2_2 --> NAT
+
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white;
+    classDef internet fill:#999999,stroke:#666666,stroke-width:2px,color:white;
+
+    class ALB,EC2_1,EC2_2,RDS,Redis,S3,IGW,NAT aws;
+    class Internet internet;
+```
+
 The deployed infrastructure includes:
 
 - VPC with public and private subnets across 2 Availability Zones

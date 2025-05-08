@@ -10,7 +10,7 @@ Parameters:
   ProjectName:
     Description: Name of the project
     Type: String
-    Default: BasicCloudApp
+    Default: basic-cloud-app
 
   InstanceType:
     Description: EC2 instance type
@@ -58,6 +58,8 @@ Mappings:
       AMI: ami-058b1b7fe545997ae
     eu-central-1:
       AMI: ami-00f22f6155d6d92c5
+    ap-south-1:
+      AMI: ami-062f0cc54dbfd8ef1
     ap-southeast-1:
       AMI: ami-0b89f7b3f054b957e
     ap-southeast-2:

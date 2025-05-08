@@ -14,7 +14,7 @@ Parameters:
   ProjectName:
     Description: Name of the project
     Type: String
-    Default: BasicCloudApp
+    Default: basic-cloud-app
 
   VpcCidr:
     Description: CIDR block for the VPC

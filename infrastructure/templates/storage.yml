@@ -10,7 +10,7 @@ Parameters:
   ProjectName:
     Description: Name of the project
     Type: String
-    Default: BasicCloudApp
+    Default: basic-cloud-app
 
 Resources:
   # S3 Bucket with versioning

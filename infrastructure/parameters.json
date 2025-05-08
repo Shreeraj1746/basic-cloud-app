@@ -5,7 +5,7 @@
   },
   {
     "ParameterKey": "ProjectName",
-    "ParameterValue": "BasicCloudApp"
+    "ParameterValue": "basic-cloud-app"
   },
   {
     "ParameterKey": "VpcCidr",
@@ -33,7 +33,7 @@
   },
   {
     "ParameterKey": "KeyPairName",
-    "ParameterValue": "your-key-pair"
+    "ParameterValue": "basic-cloud-app-key-pair"
   },
   {
     "ParameterKey": "DBInstanceClass",

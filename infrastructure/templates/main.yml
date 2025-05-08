@@ -14,7 +14,7 @@ Parameters:
   ProjectName:
     Description: Name of the project
     Type: String
-    Default: BasicCloudApp
+    Default: basic-cloud-app
 
   VpcCidr:
     Description: CIDR block for the VPC
@@ -51,6 +51,7 @@ Parameters:
 
   KeyPairName:
     Description: Name of an existing EC2 KeyPair
+    Default: basic-cloud-app-key-pair
     Type: String
 
   DBInstanceClass:
@@ -74,6 +75,7 @@ Parameters:
   DBPassword:
     Description: Database admin password
     Type: String
+    Default: dbpassword123
     NoEcho: true
 
   CacheNodeType:
